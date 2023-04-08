@@ -31,6 +31,7 @@ DEFAULT_TEST_TIMEOUT = 2 # seconds
 import multiprocessing
 import subprocess
 import shutil
+import math
 import json
 import time
 import sys
@@ -100,6 +101,22 @@ def check_configuration(json_config):
                 print("[ FATAL:JSON ] Each test inside a test group must contain a 'name' field. Please check the JSON file for errors.")
                 print(f"[ FATAL:JSON ] The problem was encountered inside the '{test_group['name']}' test group: {test}")
                 return False
+            if not 'test-type' in test:
+                print("[ FATAL:JSON ] Each test inside a test group must contain a 'test-type' field. Please check the JSON file for errors.")
+                print(f"[ FATAL:JSON ] The problem was encountered inside the '{test_group['name']}' test group: {test}")
+                return False
+            if test['test-type'] != "exact" and test['test-type'] != "approx":
+                print("[ FATAL:JSON ] The 'test-type' field may only be set to \"exact\" or \"approx\". Please check the JSON file for errors.")
+                print(f"[ FATAL:JSON ] The problem was encountered inside the '{test_group['name']}' test group: {test}")
+                return False
+            if test['test-type'] == "approx" and not 'max-error' in test:
+                print("[ FATAL:JSON ] The 'test-type' field is set to \"approx\", so a 'max-error' field should be provided. Please check the JSON file for errors.")
+                print(f"[ FATAL:JSON ] The problem was encountered inside the '{test_group['name']}' test group: {test}")
+                return False
+            if test['test-type'] == "exact" and 'max-error' in test:
+                print("[ FATAL:JSON ] The 'test-type' field is set to \"exact\", so a 'max-error' field should NOT be provided. Please check the JSON file for errors.")
+                print(f"[ FATAL:JSON ] The problem was encountered inside the '{test_group['name']}' test group: {test}")
+                return False
 
     # Check the subfiles and subfolders
     for test_group in json_config['test-groups']:
@@ -114,23 +131,27 @@ def check_configuration(json_config):
                 return False
             test_file = f"{expected_subdir}/run_test.m"
             if not os.path.isfile(test_file):
-                print(f"[ FATAL:TEST ] Missing 'run_test.m' for test group '{test_group['name']}' / test '{test['name']}' (expected '{test_file}')")
+                print(f"[ FATAL:TEST ] Missing 'run_test.m' file for test group '{test_group['name']}' / test '{test['name']}' (expected '{test_file}')")
+                return False
+            test_ref = f"{expected_subdir}/ref"
+            if not os.path.isfile(test_ref):
+                print(f"[ FATAL:TEST ] Missing 'ref' file for test group '{test_group['name']}' / test '{test['name']}' (expected '{test_ref}')")
                 return False
 
     # All went well
     return True
 
-# This function runs a given test.
+# This function evaluates a given test.
 # - - -
 # Params: test_group = The test group in which the test is currently found.
 #         test = The test that shall be run.
 # - - -
-# Returns: (percent, msg), where:
-#          percent = A score from 0 to test-score
+# Returns: (score, msg), where:
+#          score = A score from 0 to test-score
 #          msg = A text description of the final result
 def evaluate_test(test_group, test):
     if not os.path.isfile(test_group['expected-file']):
-        return (0, f"Missing '{test_group['expected-file']}'")
+        return (0, f"missing '{test_group['expected-file']}'")
 
     test_subdir = f"{CHECKER_PATH}/{test_group['folder']}/{test['name']}"
     shutil.copy(test_group['expected-file'], test_subdir)
@@ -157,9 +178,44 @@ def evaluate_test(test_group, test):
     # Cleanup
     os.remove(f"{test_subdir}/stderr")
 
+    # Compare out & ref based on the provided argument
+    numbers_out = None
+    try:
+        with open(f"{test_subdir}/out") as fout:
+            if test['test-type'] == "exact":
+                numbers_out = [int(float(x)) for x in fout.read().split()]
+            elif test['test-type'] == "approx":
+                numbers_out = [float(x) for x in fout.read().split()]
+    except ValueError:
+        return (0, "out should only contain numbers")
+    numbers_ref = None
+    try:
+        with open(f"{test_subdir}/ref") as fref:
+            if test['test-type'] == "exact":
+                numbers_ref = [int(float(x)) for x in fref.read().split()]
+            elif test['test-type'] == "approx":
+                numbers_ref = [float(x) for x in fref.read().split()]
+    except ValueError:
+        return (0, "ref should only contain numbers")
+
+    if len(numbers_out) != len(numbers_ref):
+        return (0, "WA")
+    
+    if test['test-type'] == "exact":
+        for i in range(len(numbers_ref)):
+            if numbers_out[i] != numbers_ref[i]:
+                return (0, "WA")
+    elif test['test-type'] == "approx":
+        for i in range(len(numbers_ref)):
+            if math.fabs(numbers_out[i] - numbers_ref[i]) > float(test['max-error']):
+                return (0, "WA")
+
+    # Cleanup
+    os.remove(f"{test_subdir}/out")
+
+    # TODO - future development shall allow for partial points
     percent = 1
     msg = "OK"
-
     return (percent * test['test-score'], msg)
 
 # This function will go through each test of a group individually. Output shall
