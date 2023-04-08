@@ -156,17 +156,16 @@ def evaluate_test(test_group, test):
 def evaluate_test_group(test_group):
     total_points = 0
     max_points = 0
-    print("=" * len(test_group['name']))
     print(test_group['name'])
-    print("=" * len(test_group['name']))
+    print("-" * len(test_group['name']))
     for test in test_group['tests']:
-        print(f"{test['name']}: ", end="")
+        print(f"\n[{test['name']}]: ", end="")
         test_return = evaluate_test(test_group, test)
-        print(f"{test_return[0]}p/{test['test-score']}p ({test_return[1]})")
+        print(f"{test_return[0]}p/{test['test-score']}p ({test_return[1]})", end="")
         total_points += test_return[0]
         max_points += test['test-score']
 
-    print(f"\nTotal: {total_points}p/{max_points}p")
+    print(f"\n\n=> TOTAL: {total_points}p/{max_points}p\n")
     return (total_points, max_points)
 
 # This function will go through each test group individually and mark them
@@ -174,18 +173,23 @@ def evaluate_test_group(test_group):
 def evaluate_all_test_groups(json_config):
     total_points = 0
     max_points = 0
+    print("\n", end="")
+    print("=" * 80)
     print("The Numerical Methods team reserves its right to change your final score in case")
-    print("anything suspicious is found in your source code.")
+    print("anything suspicious is found in the source code.")
     print("\nPlease refer to the course's guidelines for more info.")
-    print("\nThis checker is kindly provided as an Open-Source project by Valentin-Vintilă.")
+    print("\nThis checker is kindly provided as an open-source project by Valentin Vintilă.")
     print("Check it out on GitHub: https://github.com/w1bb/NM-checker")
+    print("=" * 80)
     for test_group in json_config['test-groups']:
         print("\n", end="")
         (group_tp, group_mp) = evaluate_test_group(test_group)
         total_points += group_tp
         max_points += group_mp
-    print(f"\nFINAL SCORE: {total_points}p/{max_points}p")
+    print("= " * 40)
+    print(f"FINAL SCORE: {total_points}p/{max_points}p")
     print("Up to 10p can be obtained by providing a README and clean code!")
+    print("= " * 40, end="\n\n")
 
 # Checker's true entrypoint
 def main(arguments):
