@@ -59,6 +59,12 @@
             "folder": "task-2",
             "expected-file": "task-2.m",
             "tests": [
+                {
+                    "name": "test-missing",
+                    "test-score": 1,
+                    "test-type": "approx",
+                    "max-error": 0.01
+                }
             ]
         },
         {
