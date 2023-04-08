@@ -1,0 +1,35 @@
+{
+    "other1": "Test",
+    "other2": 15,
+    "other3": 3.14,
+    "other4": {
+        "test": "wow"
+    },
+    "test-groups": [
+        {
+            "name": "Task 1. Markov is coming...",
+            "folder": "task-1",
+            "expected-file": "task-1.m",
+            "tests": [
+                {
+                    "name": "test-01",
+                    "test-score": 1
+                }
+            ]
+        },
+        {
+            "name": "Task 2. Linear Regression",
+            "folder": "task-2",
+            "expected-file": "task-2.m",
+            "tests": [
+            ]
+        },
+        {
+            "name": "Task 3. MNIST 101",
+            "folder": "task-3",
+            "expected-file": "task-3.m",
+            "tests": [
+            ]
+        }
+    ]
+}
