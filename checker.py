@@ -24,8 +24,8 @@
 #  SOFTWARE.
 # ==============================================================================
 
-CHECKER_PATH = "checker"
-JSON_CONFIG_PATH = f"{CHECKER_PATH}/config.json"
+CHECKER_FOLDER = "checker"
+JSON_CONFIG_PATH = f"{CHECKER_FOLDER}/config.json"
 DEFAULT_TEST_TIMEOUT = 2 # seconds
 
 import multiprocessing
@@ -120,7 +120,7 @@ def check_configuration(json_config):
 
     # Check the subfiles and subfolders
     for test_group in json_config['test-groups']:
-        expected_dir = f"{CHECKER_PATH}/{test_group['folder']}"
+        expected_dir = f"{CHECKER_FOLDER}/{test_group['folder']}"
         if not os.path.isdir(expected_dir):
             print(f"[ FATAL:DIR ] Missing folder for test group '{test_group['name']}' (expected '{expected_dir}')")
             return False
@@ -153,7 +153,7 @@ def evaluate_test(test_group, test):
     if not os.path.isfile(test_group['expected-file']):
         return (0, f"missing '{test_group['expected-file']}'")
 
-    test_subdir = f"{CHECKER_PATH}/{test_group['folder']}/{test['name']}"
+    test_subdir = f"{CHECKER_FOLDER}/{test_group['folder']}/{test['name']}"
     shutil.copy(test_group['expected-file'], test_subdir)
 
     with open(f"{test_subdir}/stdout", "w") as fout:
@@ -277,7 +277,21 @@ def main(arguments):
     if check_configuration(json_config) == False:
         print(f"[ FATAL ] JSON config ('{JSON_CONFIG_PATH}') is invalid!")
         return -1
-        
+
+    # Check the arguments
+    if len(arguments) > 1 or (len(arguments) == 1 and not arguments[0].isnumeric()):
+        print(f"\nChecker usage: ./checker [task-number]\n")
+        return -1
+    
+    if len(arguments) == 1:
+        x = int(arguments[0])
+        if x <= 0 or x > len(json_config['test-groups']):
+            print(f"\nThere is no task {x}.")
+            print(f"Please provide a value in the [1, {len(json_config['test-groups'])}] range.\n")
+            return -1
+        json_config['test-groups'] = json_config['test-groups'][(x-1):x]
+    
+    # Start the checker    
     evaluate_all_test_groups(json_config)
 
 # Pass control to the main() function

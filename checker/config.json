@@ -1,10 +1,4 @@
 {
-    "other1": "Test",
-    "other2": 15,
-    "other3": 3.14,
-    "other4": {
-        "test": "wow"
-    },
     "test-groups": [
         {
             "name": "Task 1. Markov is coming...",
