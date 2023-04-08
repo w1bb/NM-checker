@@ -26,8 +26,13 @@
 
 CHECKER_PATH = "checker"
 JSON_CONFIG_PATH = f"{CHECKER_PATH}/config.json"
+DEFAULT_TEST_TIMEOUT = 2 # seconds
 
+import multiprocessing
+import subprocess
+import shutil
 import json
+import time
 import sys
 import os
 
@@ -107,9 +112,9 @@ def check_configuration(json_config):
             if not os.path.isdir(expected_subdir):
                 print(f"[ FATAL:SUBDIR ] Missing subfolder for test group '{test_group['name']}' / test '{test['name']}' (expected '{expected_subdir}')")
                 return False
-            test_file = f"{expected_subdir}/test.m"
+            test_file = f"{expected_subdir}/run_test.m"
             if not os.path.isfile(test_file):
-                print(f"[ FATAL:TEST ] Missing 'test.m' for test group '{test_group['name']}' / test '{test['name']}' (expected '{test_file}')")
+                print(f"[ FATAL:TEST ] Missing 'run_test.m' for test group '{test_group['name']}' / test '{test['name']}' (expected '{test_file}')")
                 return False
 
     # All went well
@@ -117,26 +122,70 @@ def check_configuration(json_config):
 
 # This function runs a given test.
 # - - -
-# Params: test = The test that shall be run
+# Params: test_group = The test group in which the test is currently found.
+#         test = The test that shall be run.
 # - - -
 # Returns: (percent, msg), where:
-#          percent = A score from 0 to 1
+#          percent = A score from 0 to test-score
 #          msg = A text description of the final result
-def run_test(test):
-    percent = 0
+def evaluate_test(test_group, test):
+    if not os.path.isfile(test_group['expected-file']):
+        return (0, f"Missing '{test_group['expected-file']}'")
+
+    test_subdir = f"{CHECKER_PATH}/{test_group['folder']}/{test['name']}"
+    shutil.copy(test_group['expected-file'], test_subdir)
+
+    with open(f"{test_subdir}/stdout", "w") as fout:
+        with open(f"{test_subdir}/stderr", "w") as ferr:
+            p = subprocess.Popen(["octave", "run_test.m"], cwd=test_subdir, stdout=fout, stderr=ferr)
+            try:
+                p.wait(timeout=DEFAULT_TEST_TIMEOUT)
+            except subprocess.TimeoutExpired:
+                # If the process is still running after 2 seconds, terminate it
+                p.terminate()
+                p.join()
+                return (0, f"TIMEOUT (> {DEFAULT_TEST_TIMEOUT}s)")
+
+    percent = 1
     msg = "OK"
 
-    return (percent, msg)
+    return (percent * test['test-score'], msg)
 
 # This function will go through each test of a group individually. Output shall
 # be provided throughout the whole process.
-def run_test_group(test_group):
-    None
+def evaluate_test_group(test_group):
+    total_points = 0
+    max_points = 0
+    print("=" * len(test_group['name']))
+    print(test_group['name'])
+    print("=" * len(test_group['name']))
+    for test in test_group['tests']:
+        print(f"{test['name']}: ", end="")
+        test_return = evaluate_test(test_group, test)
+        print(f"{test_return[0]}p/{test['test-score']}p ({test_return[1]})")
+        total_points += test_return[0]
+        max_points += test['test-score']
+
+    print(f"\nTotal: {total_points}p/{max_points}p")
+    return (total_points, max_points)
 
 # This function will go through each test group individually and mark them
 # accordingly. Output shall be provided throughout the whole process.
-def run_all_test_groups():
-    None
+def evaluate_all_test_groups(json_config):
+    total_points = 0
+    max_points = 0
+    print("The Numerical Methods team reserves its right to change your final score in case")
+    print("anything suspicious is found in your source code.")
+    print("\nPlease refer to the course's guidelines for more info.")
+    print("\nThis checker is kindly provided as an Open-Source project by Valentin-Vintilă.")
+    print("Check it out on GitHub: https://github.com/w1bb/NM-checker")
+    for test_group in json_config['test-groups']:
+        print("\n", end="")
+        (group_tp, group_mp) = evaluate_test_group(test_group)
+        total_points += group_tp
+        max_points += group_mp
+    print(f"\nFINAL SCORE: {total_points}p/{max_points}p")
+    print("Up to 10p can be obtained by providing a README and clean code!")
 
 # Checker's true entrypoint
 def main(arguments):
@@ -155,7 +204,8 @@ def main(arguments):
     if check_configuration(json_config) == False:
         print(f"[ FATAL ] JSON config ('{JSON_CONFIG_PATH}') is invalid!")
         return -1
-    print(json_config)
+        
+    evaluate_all_test_groups(json_config)
 
 # Pass control to the main() function
 if __name__ == "__main__":
