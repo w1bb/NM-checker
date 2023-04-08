@@ -1,0 +1,3 @@
+error: 'this' undefined near line 3, column 5
+error: called from
+    run_test at line 3 column 5

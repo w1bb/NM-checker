@@ -12,7 +12,15 @@
             "expected-file": "task-1.m",
             "tests": [
                 {
-                    "name": "test-01",
+                    "name": "test-ok",
+                    "test-score": 1
+                },
+                {
+                    "name": "test-infinite",
+                    "test-score": 1
+                },
+                {
+                    "name": "test-stderr",
                     "test-score": 1
                 }
             ]

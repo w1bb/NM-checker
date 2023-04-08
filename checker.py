@@ -1,27 +1,27 @@
 #!/usr/bin/python
 
-# =========================== [ MIT License Notice ] ===========================
-#
-# Copyright (c) 2023 Valentin-Ioan VINTILĂ
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-#
+# ==============================================================================
+#                             [ MIT License Notice ]                            
+# ==============================================================================
+#  Copyright (c) 2023 Valentin-Ioan VINTILĂ
+# 
+#  Permission is hereby granted, free of charge, to any person obtaining a copy
+#  of this software and associated documentation files (the "Software"), to deal
+#  in the Software without restriction, including without limitation the rights
+#  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#  copies of the Software, and to permit persons to whom the Software is
+#  furnished to do so, subject to the following conditions:
+# 
+#  The above copyright notice and this permission notice shall be included in
+#  all copies or substantial portions of the Software.
+# 
+#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#  SOFTWARE.
 # ==============================================================================
 
 CHECKER_PATH = "checker"
@@ -141,10 +141,21 @@ def evaluate_test(test_group, test):
             try:
                 p.wait(timeout=DEFAULT_TEST_TIMEOUT)
             except subprocess.TimeoutExpired:
-                # If the process is still running after 2 seconds, terminate it
                 p.terminate()
-                p.join()
+                p.wait()
+
+                # Cleanup
+                os.remove(f"{test_subdir}/{test_group['expected-file']}")
                 return (0, f"TIMEOUT (> {DEFAULT_TEST_TIMEOUT}s)")
+
+    # Cleanup
+    os.remove(f"{test_subdir}/{test_group['expected-file']}")
+
+    if os.stat(f'{test_subdir}/stderr').st_size != 0:
+        return (0, f"errors, check '{test_subdir}/stderr'")
+
+    # Cleanup
+    os.remove(f"{test_subdir}/stderr")
 
     percent = 1
     msg = "OK"
@@ -161,11 +172,11 @@ def evaluate_test_group(test_group):
     for test in test_group['tests']:
         print(f"\n[{test['name']}]: ", end="")
         test_return = evaluate_test(test_group, test)
-        print(f"{test_return[0]}p/{test['test-score']}p ({test_return[1]})", end="")
+        print(f"{test_return[0]}p / {test['test-score']}p ({test_return[1]})", end="")
         total_points += test_return[0]
         max_points += test['test-score']
 
-    print(f"\n\n=> TOTAL: {total_points}p/{max_points}p\n")
+    print(f"\n\n=> TOTAL: {total_points}p / {max_points}p\n")
     return (total_points, max_points)
 
 # This function will go through each test group individually and mark them
@@ -187,8 +198,10 @@ def evaluate_all_test_groups(json_config):
         total_points += group_tp
         max_points += group_mp
     print("= " * 40)
-    print(f"FINAL SCORE: {total_points}p/{max_points}p")
-    print("Up to 10p can be obtained by providing a README and clean code!")
+    print(f"FINAL SCORE: {total_points}p / {max_points}p")
+    if total_points == max_points:
+        print("Congratulations, you did it!\n")
+    print("Up to 10p can be awarded for providing a good README and clean code!")
     print("= " * 40, end="\n\n")
 
 # Checker's true entrypoint
